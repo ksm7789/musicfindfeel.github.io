@@ -1,0 +1,46 @@
+# 오늘의 선곡
+
+연령대(10대~60대 이상)와 지금의 기분(8가지)을 고르면, 요즘 많이 듣는 곡 가운데 어울리는 세 곡을 골라 주는 웹앱입니다. 휴대폰 홈 화면에 앱으로 설치할 수 있고, 오프라인에서도 열립니다.
+
+## 폴더 구성
+
+| 파일 | 역할 |
+|---|---|
+| `index.html` | 앱 화면 전체 |
+| `manifest.webmanifest`, `sw.js`, `icons/` | 앱 설치·오프라인 지원 |
+| `data/songs.json` | 앱이 쓰는 곡 목록 (매주 자동 생성) |
+| `scripts/update-songs.mjs` | 곡 수집·분류 프로그램 |
+| `scripts/seed.mjs` | 검수된 기본 곡 250곡 (최신곡이 부족할 때 채움) |
+| `scripts/sources.mjs` | 세대별로 최근곡을 챙길 가수 목록, 분류 규칙 |
+| `.github/workflows/update-songs.yml` | 매주 월요일 오전 6시 자동 갱신 |
+
+## 곡이 정해지는 방식
+
+1. **수집**: Apple Music 한국 인기곡 100곡, Last.fm 한국 주간 인기곡 200곡, `sources.mjs`에 적힌 가수 60여 명의 최근 30개월 발매곡을 가져옵니다. 기본 곡과 합치면 매주 600~800곡 규모입니다. 차트에 잘 잡히지 않는 40~60대 취향의 신곡은 가수 목록 쪽에서 보완합니다.
+2. **분류**: Last.fm 사용자들이 붙인 분위기 태그(곡 태그가 없는 신곡은 가수 태그)와 장르, 제목으로 기분을 정합니다. 장르만으로 정해진 곡은 확신이 낮다고 보고 덜 뽑히게 합니다.
+3. **병합**: 기본 곡 250곡과 합칩니다. 최신곡과 차트 상위곡일수록 더 자주 뽑히고, 최신곡이 충분한 조합에서는 기본 곡이 덜 나옵니다.
+4. **추천**: 앱은 저장된 목록에서 바로 세 곡을 고릅니다. 같은 가수는 한 번만 나오고, 최근에 나온 곡은 다시 나오지 않습니다.
+
+외부 데이터를 하나도 받지 못한 주에는 지난주 목록을 그대로 둡니다.
+
+## 배포 (전부 무료)
+
+GitHub Pages와 자동 갱신은 **공개(Public) 저장소**에서 무료입니다. 비공개 저장소로 Pages를 쓰려면 유료 요금제가 필요합니다. 곡 목록과 화면 코드에는 개인 정보가 없어 공개해도 문제없습니다.
+
+1. GitHub에 **Public** 저장소를 만들고 이 폴더의 파일을 모두 올립니다. `.github` 폴더도 꼭 함께 올려야 합니다.
+2. **Settings → Pages**에서 Source를 `Deploy from a branch`, 브랜치를 `main` / `(root)`로 지정합니다. 몇 분 뒤 `https://<아이디>.github.io/<저장소명>/` 주소가 생깁니다.
+3. **Settings → Actions → General → Workflow permissions**를 `Read and write permissions`로 바꿉니다. 그래야 자동 갱신 결과를 저장할 수 있습니다.
+4. **Actions** 탭에서 `주간 곡 목록 갱신`을 열고 `Run workflow`를 한 번 눌러, 이번 주 최신곡을 바로 반영합니다.
+
+## Last.fm 키 (무료, 권장)
+
+Last.fm 한국 주간 인기곡 수집과 분위기 태그에 쓰입니다. 없어도 앱은 동작하지만, 수집 곡이 줄고 신곡이 장르와 제목만으로 분류됩니다.
+
+1. last.fm 계정을 만든 뒤 **last.fm/api/account/create**에서 이름과 설명만 적고 키를 받습니다. 개인·비상업 용도는 무료입니다.
+2. 저장소의 **Settings → Secrets and variables → Actions → New repository secret**에 이름 `LASTFM_API_KEY`, 값에 받은 키를 넣습니다.
+
+## 자주 손볼 곳
+
+- **세대별 가수 추가·삭제**: `scripts/sources.mjs`의 `WATCH_ARTISTS`
+- **기본 곡 수정**: `scripts/seed.mjs`. 고친 뒤 `node scripts/update-songs.mjs --offline`으로 목록을 다시 만들 수 있습니다.
+- **화면을 고친 뒤**: `sw.js`의 `VERSION` 값을 올려야 설치된 앱에도 새 화면이 반영됩니다.
