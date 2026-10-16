@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <title>오늘 내 기분에 맞는 음악찾기 🎵</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- PWA 및 모바일 설정 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="감성뮤직">
+    <meta name="theme-color" content="#ff758c">
+    <link rel="manifest" href="manifest.webmanifest">
+
+    <!-- 앱 아이콘 설정 -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="preload" href="songs.json" as="fetch" crossorigin>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #f8f6f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+            padding: 28px 20px;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+        }
+
+        .header { margin-bottom: 20px; }
+        .icon { font-size: clamp(36px, 8vw, 44px); margin-bottom: 6px; }
+        .cat { line-height: 0; }
+        .cat svg { width: clamp(104px, 28vw, 124px); height: auto; overflow: visible; }
+        .cat .bob { transform-origin: 60px 96px; animation: bob 2.4s ease-in-out infinite; }
+        .cat .float { animation: float 2.4s ease-in-out infinite; }
+        @keyframes bob { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(-4px); opacity: .7; } }
+        @media (prefers-reduced-motion: reduce) { .cat .bob, .cat .float { animation: none; } }
+        h1 { font-size: clamp(18px, 4.5vw, 22px); color: #333; }
+
+        .group-title {
+            text-align: left;
+            font-size: 14px;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background-color: #f9f8f6;
+            border: 1px solid #e5e3df;
+            border-radius: 12px;
+            padding: 12px 8px;
+            font-size: clamp(13px, 3.5vw, 14px);
+            color: #444;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            word-break: keep-all;
+        }
+
+        .btn:active, .btn:hover { background-color: #f0eee9; }
+
+        .btn.active {
+            background-color: #ff758c !important;
+            color: #ffffff !important;
+            border-color: #ff758c !important;
+            font-weight: bold;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background-color: #ff758c;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(255, 117, 140, 0.3);
+            transition: background-color 0.2s;
+        }
+
+        .submit-btn:hover { background-color: #e85d74; }
+
+        .result-box {
+            display: none;
+            margin-top: 24px;
+            padding: 18px 14px;
+            background-color: #fff9f6;
+            border: 1.5px solid #ffd8cc;
+            border-radius: 16px;
+            text-align: left;
+        }
+
+        .result-header {
+            font-size: 15px;
+            font-weight: bold;
+            color: #ff758c;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .song-item {
+            background: white;
+            border: 1px solid #ffe2d6;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .song-item:last-child { margin-bottom: 0; }
+        .song-info { flex: 1; min-width: 0; }
+        .song-title { font-size: 14px; font-weight: bold; color: #222; overflow-wrap: anywhere; }
+        .song-artist { font-size: 12px; color: #777; margin-top: 2px; overflow-wrap: anywhere; }
+
+        .youtube-link {
+            background-color: #ff0000;
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .install-guide {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f4f8;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #555;
+            text-align: center;
+        }
+
+        .install-btn {
+            margin-top: 8px;
+            background: #ff758c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="icon cat"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 112" role="img" aria-label="헤드폰을 쓴 고양이">
+            <g class="bob"><g transform="rotate(0 60 64)">
+            <g stroke="#5b4636" stroke-width="2.6" stroke-linejoin="round">
+            <path d="M29 50 L33 17 Q35 13 39 16 L55 34 Z" fill="#fff4e6"/>
+            <path d="M91 50 L87 17 Q85 13 81 16 L65 34 Z" fill="#fff4e6"/>
+            <path d="M35 24 L37 40 L47 34 Z" fill="#ffc9d3" stroke="none"/>
+            <path d="M85 24 L83 40 L73 34 Z" fill="#ffc9d3" stroke="none"/>
+            <ellipse cx="60" cy="66" rx="36" ry="31" fill="#fff4e6"/>
+            </g>
+            
+            <g fill="none" stroke="#5b4636" stroke-width="2.8" stroke-linecap="round"><path d="M43 63 q5 -6 10 0"/><path d="M67 63 q5 -6 10 0"/></g>
+            <path d="M57 72 h6 l-3 3.4 z" fill="#ff758c" stroke="#ff758c" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M53 77 q3.5 4 7 0 q3.5 4 7 0" fill="none" stroke="#5b4636" stroke-width="2.2" stroke-linecap="round"/>
+            <ellipse cx="39" cy="76" rx="6.5" ry="4" fill="#ff758c" opacity=".35"/>
+            <ellipse cx="81" cy="76" rx="6.5" ry="4" fill="#ff758c" opacity=".35"/>
+            <g stroke="#5b4636" stroke-width="1.6" stroke-linecap="round" opacity=".55"><path d="M30 70 h-9"/><path d="M31 76 l-8 3"/><path d="M90 70 h9"/><path d="M89 76 l8 3"/></g>
+            <path d="M22 62 C20 14 100 14 98 62" fill="none" stroke="#5b4636" stroke-width="10" stroke-linecap="round"/>
+            <path d="M22 62 C20 14 100 14 98 62" fill="none" stroke="#ff758c" stroke-width="5.4" stroke-linecap="round"/>
+            <g stroke="#5b4636" stroke-width="2.6">
+            <rect x="11" y="52" width="19" height="28" rx="9" fill="#ff758c"/>
+            <rect x="90" y="52" width="19" height="28" rx="9" fill="#ff758c"/>
+            </g>
+            <rect x="15" y="57" width="6" height="12" rx="3" fill="#fff" opacity=".55"/>
+            <rect x="94" y="57" width="6" height="12" rx="3" fill="#fff" opacity=".55"/>
+            
+            </g></g>
+            <g class="float"><g transform="translate(104 8) scale(1.0)" fill="#ff758c"><ellipse cx="0" cy="10" rx="4.2" ry="3.3" transform="rotate(-20 0 10)"/><rect x="3" y="-6" width="2" height="16" rx="1"/><path d="M5-6c4 1 7 3 7 8-2-3-4-4-7-4z"/></g><g transform="translate(6 14) scale(0.8)" fill="#ffa3b4"><ellipse cx="0" cy="10" rx="4.2" ry="3.3" transform="rotate(-20 0 10)"/><rect x="3" y="-6" width="2" height="16" rx="1"/><path d="M5-6c4 1 7 3 7 8-2-3-4-4-7-4z"/></g></g>
+            </svg></div>
+        <h1>오늘 내 기분에 맞는 음악</h1>
+    </div>
+
+    <!-- 1. 연령대 선택 -->
+    <div class="group-title">1. 연령대 선택</div>
+    <div class="btn-grid" id="ageArea">
+        <button type="button" class="btn" data-age="10">10대</button>
+        <button type="button" class="btn" data-age="20">20대</button>
+        <button type="button" class="btn" data-age="30">30대</button>
+        <button type="button" class="btn" data-age="40">40대</button>
+        <button type="button" class="btn" data-age="50">50대</button>
+        <button type="button" class="btn" data-age="60">60대 이상</button>
+    </div>
+
+    <!-- 2. 기분 선택 -->
+    <div class="group-title">2. 지금 느껴지는 기분</div>
+    <div class="btn-grid" id="moodArea">
+        <button type="button" class="btn" data-mood="happy">🥳 기쁨</button>
+        <button type="button" class="btn" data-mood="sad">🌧️ 슬픔</button>
+        <button type="button" class="btn" data-mood="relaxed">☕ 휴식</button>
+        <button type="button" class="btn" data-mood="energetic">🔥 열정</button>
+        <button type="button" class="btn" data-mood="lonely">🌙 외로움</button>
+        <button type="button" class="btn" data-mood="angry">⚡ 분노</button>
+        <button type="button" class="btn" data-mood="love">💖 설렘</button>
+        <button type="button" class="btn" data-mood="focus">📖 집중</button>
+    </div>
+
+    <button type="button" class="submit-btn" id="submitBtn">추천곡 3개 보기</button>
+
+    <!-- 결과 표시 영역 -->
+    <div class="result-box" id="resultArea">
+        <div class="result-header">✨ 맞춤 추천 곡 3선</div>
+        <div id="songList"></div>
+    </div>
+
+    <div class="install-guide" id="installGuide">
+        💡 <strong>홈 화면 추가 팁</strong><br>
+        아이폰: Safari ➔ 하단 [공유] ➔ [홈 화면에 추가]<br>
+        안드로이드: Chrome ➔ 우측 상단 [⋮] ➔ [앱 설치 / 홈 화면에 추가]
+        <div><button type="button" class="install-btn" id="installBtn" hidden>📲 지금 앱으로 설치하기</button></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    var selectedAge = "";
+    var selectedMood = "";
+    var tracks = null;
+
+    // ── 저장소 (실패해도 동작) ─────────────────────────
+    function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+    function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+    // ── 버튼 선택 ────────────────────────────────────
+    function bindGroup(areaId, attr, onPick) {
+        var btns = document.getElementById(areaId).getElementsByTagName("button");
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener("click", function () {
+                for (var j = 0; j < btns.length; j++) btns[j].className = "btn";
+                this.className = "btn active";
+                onPick(this.getAttribute(attr));
+            });
+        }
+    }
+    bindGroup("ageArea", "data-age", function (v) { selectedAge = v; save("mm.age", v); });
+    bindGroup("moodArea", "data-mood", function (v) { selectedMood = v; });
+
+    // 지난번 고른 연령대 기억
+    var lastAge = load("mm.age", "");
+    if (lastAge) {
+        var b = document.querySelector('#ageArea [data-age="' + lastAge + '"]');
+        if (b) b.click();
+    }
+
+    // ── 곡 목록 (매주 자동 갱신되는 파일) ────────────────
+    function fetchSongs() {
+        return fetch("songs.json")
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(function (d) {
+                tracks = d.tracks.map(function (t) {
+                    return { title: t.t, artist: t.a, ages: t.g.split(" "), moods: t.m.split(" "), w: +t.w || 1, fresh: !!t.f };
+                });
+            })
+            .catch(function () { tracks = null; });
+    }
+    var dataReady = fetchSongs();
+
+    function artistKey(a) {
+        return String(a).split(/ \(|\s*&\s*|,|\s+x\s+|\s+with\s+/i)[0].toLowerCase().replace(/\s+/g, "");
+    }
+    function songKey(s) { return s.title + "|" + s.artist; }
+
+    // 가중치 무작위 추첨: 최신·인기곡 우선, 같은 가수는 한 번만, 최근 추천곡 제외
+    function pickThree(age, mood) {
+        var pool = tracks.filter(function (t) { return t.ages.indexOf(age) > -1 && t.moods.indexOf(mood) > -1; });
+        var freshCount = pool.filter(function (t) { return t.fresh; }).length;
+        var histKey = "mm.h." + age + "." + mood;
+        var hist = load(histKey, []);
+        var cand = pool.filter(function (t) { return hist.indexOf(songKey(t)) < 0; });
+        if (cand.length < 3) { cand = pool.slice(); hist = []; }
+
+        function weight(t) { return t.w * (freshCount >= 5 && !t.fresh ? 0.35 : 1); }
+        var chosen = [], used = {}, rest = cand.slice();
+        while (chosen.length < 3 && rest.length) {
+            var avail = rest.filter(function (t) { return !used[artistKey(t.artist)]; });
+            if (!avail.length) avail = rest;
+            var total = avail.reduce(function (s, t) { return s + weight(t); }, 0);
+            var r = Math.random() * total, pick = avail[avail.length - 1];
+            for (var i = 0; i < avail.length; i++) { r -= weight(avail[i]); if (r <= 0) { pick = avail[i]; break; } }
+            chosen.push(pick);
+            used[artistKey(pick.artist)] = 1;
+            rest.splice(rest.indexOf(pick), 1);
+        }
+        var keep = Math.max(0, Math.min(12, pool.length - 3));
+        save(histKey, hist.concat(chosen.map(songKey)).slice(-keep));
+        return chosen;
+    }
+
+    function showRecommendation() {
+        if (!selectedAge || !selectedMood) {
+            alert("연령대와 기분을 모두 선택해 주세요!");
+            return;
+        }
+        dataReady.then(function () {
+            if (!tracks) {
+                alert("곡 목록을 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러 주세요.");
+                dataReady = fetchSongs();
+                return;
+            }
+            var selectedThree = pickThree(selectedAge, selectedMood);
+            var songListContainer = document.getElementById("songList");
+            songListContainer.innerHTML = "";
+
+            for (var i = 0; i < selectedThree.length; i++) {
+                var song = selectedThree[i];
+                var query = song.artist.replace(/\s*\(feat\..*?\)/i, "") + " " + song.title;
+                var searchUrl = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
+
+                var item = document.createElement("div");
+                item.className = "song-item";
+                item.innerHTML =
+                    '<div class="song-info">' +
+                        '<div class="song-title"></div>' +
+                        '<div class="song-artist"></div>' +
+                    '</div>' +
+                    '<a target="_blank" rel="noopener" class="youtube-link">▶ 유튜브</a>';
+                item.querySelector(".song-title").textContent = (i + 1) + ". " + song.title;
+                item.querySelector(".song-artist").textContent = song.artist;
+                item.querySelector(".youtube-link").href = searchUrl;
+                songListContainer.appendChild(item);
+            }
+
+            document.getElementById("resultArea").style.display = "block";
+            document.getElementById("submitBtn").innerText = "🔄 다른 3곡 다시 추천받기";
+            document.getElementById("resultArea").scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+    }
+    document.getElementById("submitBtn").addEventListener("click", showRecommendation);
+
+    // ── 앱 설치 ─────────────────────────────────────
+    var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    if (standalone) document.getElementById("installGuide").hidden = true;
+
+    var deferred = null;
+    window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        deferred = e;
+        document.getElementById("installBtn").hidden = false;
+    });
+    document.getElementById("installBtn").addEventListener("click", function () {
+        if (!deferred) return;
+        deferred.prompt();
+        deferred.userChoice.finally(function () { deferred = null; document.getElementById("installBtn").hidden = true; });
+    });
+    window.addEventListener("appinstalled", function () { document.getElementById("installGuide").hidden = true; });
+
+    // 서비스 워커 등록 (앱 설치 · 오프라인 지원)
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker.register("sw.js").catch(function () {});
+        });
+    }
+})();
+</script>
+
+</body>
+</html>
